@@ -1,0 +1,27 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlQueryAnalyzer", "src\SqlQueryAnalyzer\SqlQueryAnalyzer.csproj", "{B8F9B1C7-8B7E-4A6F-9C2D-3E4F5A6B7C8D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlQueryAnalyzer.Api", "src\SqlQueryAnalyzer.Api\SqlQueryAnalyzer.Api.csproj", "{C9F0C2D8-9C8E-5B7F-AD3E-4F5G6A7B8C9E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B8F9B1C7-8B7E-4A6F-9C2D-3E4F5A6B7C8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8F9B1C7-8B7E-4A6F-9C2D-3E4F5A6B7C8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8F9B1C7-8B7E-4A6F-9C2D-3E4F5A6B7C8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8F9B1C7-8B7E-4A6F-9C2D-3E4F5A6B7C8D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9F0C2D8-9C8E-5B7F-AD3E-4F5G6A7B8C9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9F0C2D8-9C8E-5B7F-AD3E-4F5G6A7B8C9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9F0C2D8-9C8E-5B7F-AD3E-4F5G6A7B8C9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9F0C2D8-9C8E-5B7F-AD3E-4F5G6A7B8C9E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

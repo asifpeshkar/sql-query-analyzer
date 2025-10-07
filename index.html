@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Query Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            min-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .settings-bar {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+
+
+        .convert-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .convert-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .convert-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+        }
+
+        .pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 500px;
+        }
+
+        .pane-header {
+            background: #f8f9fa;
+            padding: 15px 25px;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: 600;
+            color: #495057;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .left-pane {
+            border-right: 1px solid #e9ecef;
+        }
+
+        .pane-content {
+            flex: 1;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sql-input {
+            flex: 1;
+            border: none;
+            padding: 25px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+            background: #fafafa;
+            color: #2c3e50;
+        }
+
+        .sql-input:focus {
+            background: white;
+        }
+
+        .results-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            background: #fafafa;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px 25px;
+            margin: 20px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .issues-section, .formatted-section {
+            margin: 20px 25px;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .issue {
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .issue:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .issue.info {
+            background: linear-gradient(90deg, #d1ecf1 0%, #bee5eb 100%);
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        .issue.warning {
+            background: linear-gradient(90deg, #fff3cd 0%, #ffeaa7 100%);
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .issue.error {
+            background: linear-gradient(90deg, #f8d7da 0%, #f5b7b1 100%);
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .issue-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .issue-suggestion {
+            font-style: italic;
+            margin-top: 8px;
+            opacity: 0.9;
+        }
+
+        .issue-meta {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .formatted-sql {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: #2c3e50;
+            overflow-x: auto;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .no-issues {
+            text-align: center;
+            padding: 40px;
+            color: #28a745;
+            font-size: 1.1rem;
+        }
+
+        .no-issues::before {
+            content: "✅";
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .clear-btn:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+
+        .stats {
+            background: white;
+            padding: 15px 25px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .sample-queries {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .sample-btn {
+            background: #e9ecef;
+            border: none;
+            color: #495057;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sample-btn:hover {
+            background: #dee2e6;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .left-pane {
+                border-right: none;
+                border-bottom: 1px solid #e9ecef;
+            }
+            
+            .pane {
+                min-height: 300px;
+            }
+
+            .settings-bar {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .sample-queries {
+                justify-content: center;
+            }
+        }
+
+        /* Syntax highlighting for SQL keywords */
+        .sql-keyword {
+            color: #0066cc;
+            font-weight: bold;
+        }
+        
+        .sql-string {
+            color: #d73a49;
+        }
+        
+        .sql-comment {
+            color: #6a737d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 SQL Query Analyzer</h1>
+            <p>Analyze and format your SQL queries with intelligent suggestions</p>
+            <p style="margin-top: 10px; font-size: 0.9rem; opacity: 0.8;">Created by Asif Peshkar @ NexumSoftware</p>
+        </div>
+
+        <div class="settings-bar">
+            <div class="sample-queries">
+                <button class="sample-btn" onclick="loadSample('basic')">Basic Query</button>
+                <button class="sample-btn" onclick="loadSample('complex')">Complex Query</button>
+                <button class="sample-btn" onclick="loadSample('issues')">Query with Issues</button>
+            </div>
+            <button id="convertBtn" class="convert-btn" onclick="analyzeSQL()">
+                🚀 Analyze SQL
+            </button>
+        </div>
+
+        <div class="main-content">
+            <div class="pane left-pane">
+                <div class="pane-header">
+                    <span>📝 SQL Input</span>
+                    <button class="clear-btn" onclick="clearInput()" title="Clear input">✕ Clear</button>
+                </div>
+                <div class="pane-content">
+                    <textarea id="sqlInput" class="sql-input" placeholder="Enter or paste your SQL query here...
+
+Examples:
+• SELECT * FROM users WHERE active = 1;
+• UPDATE users SET status = 'active';
+• DELETE FROM logs WHERE created_date < '2023-01-01';
+
+Press Ctrl+Enter to analyze or use the Analyze button.">SELECT * FROM users u
+JOIN orders o ON u.id = o.user_id
+WHERE u.active = 1
+  AND o.status IN ('pending', 'completed')
+ORDER BY o.created_date DESC;</textarea>
+                </div>
+                <div class="stats">
+                    <span id="charCount">0 characters</span>
+                    <span id="lineCount">0 lines</span>
+                </div>
+            </div>
+
+            <div class="pane">
+                <div class="pane-header">
+                    <span>📊 Analysis Results</span>
+                    <span id="analysisTime" style="font-size: 12px; color: #6c757d;"></span>
+                </div>
+                <div class="pane-content">
+                    <div id="resultsContainer" class="results-container">
+                        <div style="text-align: center; padding: 50px; color: #6c757d;">
+                            <div style="font-size: 3rem; margin-bottom: 20px;">🎯</div>
+                            <h3>Ready to Analyze</h3>
+                            <p>Enter your SQL query on the left and click "Analyze SQL" to see results here.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample SQL queries
+        const sampleQueries = {
+            basic: `SELECT id, name, email 
+FROM users 
+WHERE active = 1 
+ORDER BY name;`,
+            
+            complex: `SELECT 
+    u.id,
+    u.name,
+    u.email,
+    COUNT(o.id) as order_count,
+    SUM(o.total) as total_spent
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+WHERE u.created_date >= '2023-01-01'
+  AND u.active = 1
+GROUP BY u.id, u.name, u.email
+HAVING COUNT(o.id) > 0
+ORDER BY total_spent DESC
+LIMIT 10;`,
+            
+            issues: `SELECT * FROM users;
+UPDATE users SET status = 'inactive';
+DELETE FROM logs;
+SELECT TOP 100 * FROM orders WHERE 1=1;`
+        };
+
+        // Load sample query
+        function loadSample(type) {
+            document.getElementById('sqlInput').value = sampleQueries[type];
+            updateStats();
+        }
+
+        // Clear input
+        function clearInput() {
+            document.getElementById('sqlInput').value = '';
+            updateStats();
+            document.getElementById('resultsContainer').innerHTML = `
+                <div style="text-align: center; padding: 50px; color: #6c757d;">
+                    <div style="font-size: 3rem; margin-bottom: 20px;">🎯</div>
+                    <h3>Ready to Analyze</h3>
+                    <p>Enter your SQL query on the left and click "Analyze SQL" to see results here.</p>
+                </div>
+            `;
+        }
+
+        // Update character and line count
+        function updateStats() {
+            const input = document.getElementById('sqlInput');
+            const text = input.value;
+            const charCount = text.length;
+            const lineCount = text ? text.split('\n').length : 0;
+            
+            document.getElementById('charCount').textContent = `${charCount.toLocaleString()} characters`;
+            document.getElementById('lineCount').textContent = `${lineCount} lines`;
+        }
+
+        // Main analysis function
+        async function analyzeSQL() {
+            const sqlInput = document.getElementById('sqlInput').value.trim();
+            const apiUrl = 'http://localhost:5000/analyze'; // Default API endpoint
+            const convertBtn = document.getElementById('convertBtn');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const analysisTime = document.getElementById('analysisTime');
+
+            if (!sqlInput) {
+                showError('Please enter a SQL query to analyze.');
+                return;
+            }
+
+            // Show loading state
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '⏳ Analyzing...';
+            resultsContainer.innerHTML = '<div class="loading">🔄 Analyzing your SQL query...</div>';
+            
+            const startTime = Date.now();
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ sql: sqlInput })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                displayResults(result);
+                analysisTime.textContent = `Analysis completed in ${duration}ms`;
+
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showError(`Failed to analyze SQL: ${error.message}`);
+                analysisTime.textContent = '';
+            } finally {
+                convertBtn.disabled = false;
+                convertBtn.innerHTML = '🚀 Analyze SQL';
+            }
+        }
+
+        function showError(message) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            resultsContainer.innerHTML = `
+                <div class="error-message">
+                    <strong>❌ Error:</strong> ${message}
+                </div>
+            `;
+        }
+
+        function displayResults(result) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            let html = '';
+
+            // Issues section
+            if (result.issues && result.issues.length > 0) {
+                html += '<div class="issues-section">';
+                html += `<div class="section-title">🚨 Issues Found (${result.issues.length})</div>`;
+                html += '<div class="issues-list">';
+                
+                result.issues.forEach(issue => {
+                    const severityClass = getSeverityClass(issue.severity);
+                    const severityIcon = getSeverityIcon(issue.severity);
+                    
+                    html += `
+                        <div class="issue ${severityClass}">
+                            <div class="issue-header">
+                                ${severityIcon} <strong>${issue.ruleId}:</strong> ${issue.message}
+                            </div>
+                            ${issue.suggestion ? `<div class="issue-suggestion">💡 ${issue.suggestion}</div>` : ''}
+                            ${issue.statementIndex !== null ? `<div class="issue-meta">Statement ${issue.statementIndex + 1}</div>` : ''}
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            } else {
+                html += `
+                    <div class="issues-section">
+                        <div class="no-issues">
+                            <div>No issues found! Your SQL looks great.</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Formatted SQL section
+            if (result.formatted) {
+                html += '<div class="formatted-section">';
+                html += '<div class="section-title">✨ Formatted SQL</div>';
+                html += `<div class="formatted-sql">${escapeHtml(result.formatted)}</div>`;
+                html += '</div>';
+            }
+
+            resultsContainer.innerHTML = html;
+        }
+
+        function getSeverityClass(severity) {
+            switch (severity) {
+                case 0: return 'info';
+                case 1: return 'warning';
+                case 2: return 'error';
+                default: return 'info';
+            }
+        }
+
+        function getSeverityIcon(severity) {
+            switch (severity) {
+                case 0: return 'ℹ️';
+                case 1: return '⚠️';
+                case 2: return '❌';
+                default: return 'ℹ️';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        document.getElementById('sqlInput').addEventListener('input', updateStats);
+        
+        document.getElementById('sqlInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                analyzeSQL();
+            }
+        });
+
+        // Initialize
+        updateStats();
+    </script>
+</body>
+</html>

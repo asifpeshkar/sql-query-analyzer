@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Query Analyzer API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #005a8b;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 30px;
+        }
+        .issues {
+            margin-bottom: 20px;
+        }
+        .issue {
+            padding: 10px;
+            margin: 5px 0;
+            border-left: 4px solid;
+            border-radius: 4px;
+        }
+        .issue.warning {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        .issue.error {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        .issue.info {
+            background-color: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        .formatted-sql {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 SQL Query Analyzer API Test</h1>
+        
+        <div class="form-group">
+            <label for="apiUrl">API URL:</label>
+            <input type="text" id="apiUrl" value="http://localhost:5000/analyze" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+
+        <div class="form-group">
+            <label for="sqlInput">SQL Query:</label>
+            <textarea id="sqlInput" placeholder="Enter your SQL query here...">SELECT * FROM users WHERE active = 1;
+UPDATE users SET status = 'active';
+DELETE FROM logs;
+SELECT TOP 10 name FROM customers;</textarea>
+        </div>
+
+        <button id="analyzeBtn" onclick="analyzeSQL()">Analyze SQL</button>
+
+        <div id="results" class="results" style="display: none;">
+            <h2>Analysis Results</h2>
+            <div id="issues" class="issues"></div>
+            
+            <h3>Formatted SQL</h3>
+            <div id="formattedSql" class="formatted-sql"></div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            Analyzing SQL query...
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+    </div>
+
+    <script>
+        async function analyzeSQL() {
+            const sqlInput = document.getElementById('sqlInput').value.trim();
+            const apiUrl = document.getElementById('apiUrl').value.trim();
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const resultsDiv = document.getElementById('results');
+            const loadingDiv = document.getElementById('loading');
+            const errorDiv = document.getElementById('error');
+
+            if (!sqlInput) {
+                alert('Please enter a SQL query');
+                return;
+            }
+
+            // Reset UI
+            resultsDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+            analyzeBtn.disabled = true;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ sql: sqlInput })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                displayResults(result);
+
+            } catch (error) {
+                console.error('Error:', error);
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.style.display = 'block';
+            } finally {
+                loadingDiv.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function displayResults(result) {
+            const issuesDiv = document.getElementById('issues');
+            const formattedSqlDiv = document.getElementById('formattedSql');
+            const resultsDiv = document.getElementById('results');
+
+            // Display issues
+            if (result.issues && result.issues.length > 0) {
+                const issuesHtml = result.issues.map(issue => {
+                    const severityClass = getSeverityClass(issue.severity);
+                    const severityText = getSeverityText(issue.severity);
+                    return `
+                        <div class="issue ${severityClass}">
+                            <strong>[${severityText}] ${issue.ruleId}:</strong> ${issue.message}
+                            ${issue.suggestion ? `<br><em>Suggestion: ${issue.suggestion}</em>` : ''}
+                            ${issue.statementIndex !== null ? `<br><small>Statement Index: ${issue.statementIndex}</small>` : ''}
+                        </div>
+                    `;
+                }).join('');
+                issuesDiv.innerHTML = `<h3>Issues Found (${result.issues.length})</h3>${issuesHtml}`;
+            } else {
+                issuesDiv.innerHTML = '<h3>✅ No issues found!</h3>';
+            }
+
+            // Display formatted SQL
+            formattedSqlDiv.textContent = result.formatted || 'No formatted SQL returned';
+
+            resultsDiv.style.display = 'block';
+        }
+
+        function getSeverityClass(severity) {
+            switch (severity) {
+                case 0: return 'info';
+                case 1: return 'warning';
+                case 2: return 'error';
+                default: return 'info';
+            }
+        }
+
+        function getSeverityText(severity) {
+            switch (severity) {
+                case 0: return 'INFO';
+                case 1: return 'WARNING';
+                case 2: return 'ERROR';
+                default: return 'UNKNOWN';
+            }
+        }
+
+        // Allow Enter key to submit (with Ctrl+Enter for newlines)
+        document.getElementById('sqlInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                analyzeSQL();
+            }
+        });
+    </script>
+</body>
+</html>
