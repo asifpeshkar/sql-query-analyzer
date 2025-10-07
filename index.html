@@ -494,6 +494,9 @@ TRUNCATE TABLE old_logs;`
             analyzeStatement(statement, statementIndex) {
                 const upperStatement = statement.toUpperCase();
 
+                // SQL000: Basic syntax errors - keyword typos
+                this.checkSyntaxErrors(statement, statementIndex);
+
                 // SQL001: SELECT * usage - DISABLED
                 // Disabled as SELECT * is commonly used and often perfectly acceptable
 
@@ -574,6 +577,97 @@ TRUNCATE TABLE old_logs;`
                     this.addIssue('SQL015', 0, 'DISTINCT usage detected', 
                         'Ensure DISTINCT is necessary as it can impact performance', statementIndex);
                 }
+            }
+
+            checkSyntaxErrors(statement, statementIndex) {
+                // Define common SQL keyword typos and their corrections
+                const keywordTypos = {
+                    'SELOCT': 'SELECT',
+                    'SELCT': 'SELECT', 
+                    'SELECR': 'SELECT',
+                    'SELEDT': 'SELECT',
+                    'SLECT': 'SELECT',
+                    'FRMO': 'FROM',
+                    'FORM': 'FROM',
+                    'FRON': 'FROM',
+                    'WHRE': 'WHERE',
+                    'WHER': 'WHERE',
+                    'WEHRE': 'WHERE',
+                    'ORDR': 'ORDER',
+                    'ODER': 'ORDER',
+                    'GROPU': 'GROUP',
+                    'GRUP': 'GROUP',
+                    'JOINN': 'JOIN',
+                    'JION': 'JOIN',
+                    'INNR': 'INNER',
+                    'LEFTT': 'LEFT',
+                    'RIGHTT': 'RIGHT',
+                    'UPDAT': 'UPDATE',
+                    'UDPATE': 'UPDATE',
+                    'DELET': 'DELETE',
+                    'DELEET': 'DELETE',
+                    'CREAT': 'CREATE',
+                    'CRAETE': 'CREATE',
+                    'INSER': 'INSERT',
+                    'INSRET': 'INSERT',
+                    'VALU': 'VALUES',
+                    'VLAUES': 'VALUES'
+                };
+
+                // Check for keyword typos (using word boundaries to avoid false positives)
+                const upperStatement = statement.toUpperCase();
+                for (const [typo, correct] of Object.entries(keywordTypos)) {
+                    // Use word boundary regex to match whole words only
+                    const typoRegex = new RegExp(`\\b${typo}\\b`, 'g');
+                    if (typoRegex.test(upperStatement)) {
+                        this.addIssue('SQL000', 2, `SQL syntax error: '${typo}' should be '${correct}'`, 
+                            `Replace '${typo}' with '${correct}'`, statementIndex);
+                    }
+                }
+
+                // Check for basic SQL structure issues
+                const trimmed = upperStatement.trim();
+                
+                // Check if it starts with a valid SQL command
+                const validStarters = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'TRUNCATE', 'WITH'];
+                const startsWithValid = validStarters.some(starter => trimmed.startsWith(starter));
+                
+                if (!startsWithValid && trimmed.length > 0) {
+                    // Check if it might be a typo of a valid starter
+                    const possibleTypo = trimmed.split(/\s+/)[0];
+                    if (possibleTypo && possibleTypo.length > 2) {
+                        // Look for close matches
+                        const closeMatch = validStarters.find(valid => {
+                            return this.isCloseMatch(possibleTypo, valid);
+                        });
+                        
+                        if (closeMatch) {
+                            this.addIssue('SQL000', 2, `SQL syntax error: Statement appears to start with '${possibleTypo}', did you mean '${closeMatch}'?`, 
+                                `Replace '${possibleTypo}' with '${closeMatch}'`, statementIndex);
+                        } else {
+                            this.addIssue('SQL000', 2, `SQL syntax error: Statement does not start with a valid SQL command`, 
+                                `SQL statements should start with SELECT, INSERT, UPDATE, DELETE, CREATE, etc.`, statementIndex);
+                        }
+                    }
+                }
+            }
+
+            // Helper method to check if two strings are close matches (simple similarity check)
+            isCloseMatch(str1, str2) {
+                if (Math.abs(str1.length - str2.length) > 2) return false;
+                
+                let differences = 0;
+                const minLength = Math.min(str1.length, str2.length);
+                
+                for (let i = 0; i < minLength; i++) {
+                    if (str1[i] !== str2[i]) {
+                        differences++;
+                        if (differences > 2) return false;
+                    }
+                }
+                
+                differences += Math.abs(str1.length - str2.length);
+                return differences <= 2;
             }
 
             addIssue(ruleId, severity, message, suggestion, statementIndex) {
