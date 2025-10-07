@@ -6,7 +6,7 @@ A powerful .NET 8 application that analyzes SQL queries for potential issues and
 
 ## ✨ Features
 
-- **🎯 Comprehensive SQL Analysis**: 13+ built-in rules to detect common SQL issues
+- **🎯 Comprehensive SQL Analysis**: 12+ built-in rules to detect common SQL issues
 - **🎨 Modern Web UI**: Beautiful two-pane interface for easy SQL analysis
 - **⚡ CLI Tool**: Command-line interface for integration into workflows
 - **🔧 REST API**: HTTP API for programmatic access (local development)

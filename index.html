@@ -372,11 +372,7 @@ Examples:
 • UPDATE users SET status = 'active';
 • DELETE FROM logs WHERE created_date < '2023-01-01';
 
-Press Ctrl+Enter to analyze or use the Analyze button.">SELECT * FROM users u
-JOIN orders o ON u.id = o.user_id
-WHERE u.active = 1
-  AND o.status IN ('pending', 'completed')
-ORDER BY o.created_date DESC;</textarea>
+Press Ctrl+Enter to analyze or use the Analyze button.">SELECT * FROM users WHERE active = 1 ORDER BY name;</textarea>
                 </div>
                 <div class="stats">
                     <span id="charCount">0 characters</span>
@@ -425,10 +421,10 @@ HAVING COUNT(o.id) > 0
 ORDER BY total_spent DESC
 LIMIT 10;`,
             
-            issues: `SELECT * FROM users;
-UPDATE users SET status = 'inactive';
+            issues: `UPDATE users SET status = 'inactive';
 DELETE FROM logs;
-SELECT TOP 100 * FROM orders WHERE 1=1;`
+DROP TABLE temp_data;
+TRUNCATE TABLE old_logs;`
         };
 
         // Load sample query
@@ -489,11 +485,8 @@ SELECT TOP 100 * FROM orders WHERE 1=1;`
             analyzeStatement(statement, statementIndex) {
                 const upperStatement = statement.toUpperCase();
 
-                // SQL001: SELECT * usage
-                if (/SELECT\s+\*/.test(upperStatement)) {
-                    this.addIssue('SQL001', 1, 'Avoid using SELECT *', 
-                        'Specify explicit column names for better performance and maintainability', statementIndex);
-                }
+                // SQL001: SELECT * usage - DISABLED
+                // Disabled as SELECT * is commonly used and often perfectly acceptable
 
                 // SQL002: UPDATE without WHERE
                 if (/^UPDATE\s+/.test(upperStatement) && !/WHERE\s+/.test(upperStatement)) {
@@ -556,7 +549,7 @@ SELECT TOP 100 * FROM orders WHERE 1=1;`
                 }
 
                 // SQL013: OR in WHERE clause
-                if (/WHERE.*OR/.test(upperStatement)) {
+                if (/WHERE.*\bOR\b/.test(upperStatement)) {
                     this.addIssue('SQL013', 0, 'OR operator in WHERE clause', 
                         'OR conditions may prevent index usage, consider alternative approaches', statementIndex);
                 }
@@ -592,13 +585,16 @@ SELECT TOP 100 * FROM orders WHERE 1=1;`
                      (match) => match.toUpperCase())
                     // Add line breaks after major clauses
                     .replace(/\s+(FROM|WHERE|JOIN|INNER JOIN|LEFT JOIN|RIGHT JOIN|FULL OUTER JOIN|GROUP BY|ORDER BY|HAVING|UNION|UNION ALL)\s+/gi, '\n$1 ')
-                    // Add line breaks after SELECT
-                    .replace(/SELECT\s+/gi, 'SELECT\n    ')
-                    // Format column lists
-                    .replace(/,\s*(?=\w)/g, ',\n    ')
+                    // Add line breaks after SELECT (but be more careful)
+                    .replace(/SELECT\s+(?![\s\n])/gi, 'SELECT\n    ')
+                    // Format column lists only in SELECT clauses
+                    .replace(/(SELECT[\s\n]+[^FROM]*),\s*(?=\w)/gi, (match, p1) => {
+                        return p1 + ',\n    ';
+                    })
                     // Clean up extra whitespace
                     .replace(/\s+/g, ' ')
                     .replace(/\n\s*\n/g, '\n')
+                    .replace(/\n\s+\n/g, '\n')
                     .trim();
 
                 return formatted;
