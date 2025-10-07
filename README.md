@@ -6,7 +6,7 @@ A powerful .NET 8 application that analyzes SQL queries for potential issues and
 
 ## ✨ Features
 
-- **🎯 Comprehensive SQL Analysis**: 13+ built-in rules to detect common SQL issues
+- **🎯 Comprehensive SQL Analysis**: 11+ built-in rules to detect common SQL issues
 - **🎨 Modern Web UI**: Beautiful two-pane interface for easy SQL analysis
 - **⚡ CLI Tool**: Command-line interface for integration into workflows
 - **🔧 REST API**: HTTP API for programmatic access (local development)
@@ -26,9 +26,6 @@ A powerful .NET 8 application that analyzes SQL queries for potential issues and
 | Rule ID | Description | Severity |
 |---------|-------------|----------|
 | SQL000 | Basic syntax errors and keyword typos | Error |
-| SQL001 | SELECT * usage | Warning |
-| SQL002 | Missing WHERE clause in UPDATE | Error |
-| SQL003 | Missing WHERE clause in DELETE | Error |
 | SQL005 | Missing table aliases | Info |
 | SQL006 | CROSS JOIN detected | Warning |
 | SQL007 | Implicit comma joins | Warning |

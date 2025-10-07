@@ -430,10 +430,10 @@ HAVING COUNT(o.id) > 0
 ORDER BY total_spent DESC
 LIMIT 10;`,
             
-            issues: `UPDATE users SET status = 'inactive';
-DELETE FROM logs;
-DROP TABLE temp_data;
-TRUNCATE TABLE old_logs;`
+            issues: `DROP TABLE temp_data;
+TRUNCATE TABLE old_logs;
+SELEcT * FRMO users WHEuuRE active = 1;
+CREATE TABLE users, orders;`
         };
 
         // Load sample query
@@ -500,17 +500,11 @@ TRUNCATE TABLE old_logs;`
                 // SQL001: SELECT * usage - DISABLED
                 // Disabled as SELECT * is commonly used and often perfectly acceptable
 
-                // SQL002: UPDATE without WHERE
-                if (/^UPDATE\s+/.test(upperStatement) && !/WHERE\s+/.test(upperStatement)) {
-                    this.addIssue('SQL002', 2, 'UPDATE statement without WHERE clause', 
-                        'Add a WHERE clause to avoid updating all rows', statementIndex);
-                }
+                // SQL002: UPDATE without WHERE - DISABLED
+                // Disabled as bulk updates without WHERE are often intentional
 
-                // SQL003: DELETE without WHERE
-                if (/^DELETE\s+FROM\s+/.test(upperStatement) && !/WHERE\s+/.test(upperStatement)) {
-                    this.addIssue('SQL003', 2, 'DELETE statement without WHERE clause', 
-                        'Add a WHERE clause to avoid deleting all rows', statementIndex);
-                }
+                // SQL003: DELETE without WHERE - DISABLED  
+                // Disabled as bulk deletes without WHERE are often intentional
 
                 // SQL004: Hardcoded values - DISABLED
                 // Disabled as hardcoded values are often acceptable in many contexts
