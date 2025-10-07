@@ -6,19 +6,20 @@ A powerful .NET 8 application that analyzes SQL queries for potential issues and
 
 ## ✨ Features
 
-- **🎯 Comprehensive SQL Analysis**: 44+ built-in rules to detect common SQL issues
+- **🎯 Comprehensive SQL Analysis**: 15+ built-in rules to detect common SQL issues
 - **🎨 Modern Web UI**: Beautiful two-pane interface for easy SQL analysis
 - **⚡ CLI Tool**: Command-line interface for integration into workflows
-- **🔧 REST API**: HTTP API for programmatic access
+- **🔧 REST API**: HTTP API for programmatic access (local development)
 - **📱 Responsive Design**: Works on desktop, tablet, and mobile devices
-- **🚀 Easy Deployment**: Ready for Vercel deployment
+- **🚀 Static Deployment**: Fully client-side, perfect for Vercel/Netlify
+- **⚡ Zero Dependencies**: No server required for web UI
 
 ## 🛠️ Technology Stack
 
-- **.NET 8.0**: Modern C# framework
-- **Minimal APIs**: Lightweight web API
-- **HTML5/CSS3/JavaScript**: Modern web technologies
-- **Regex-based Analysis**: No external database dependencies
+- **.NET 8.0**: Modern C# framework (CLI/API)
+- **Pure JavaScript**: Client-side SQL analysis engine
+- **HTML5/CSS3**: Modern web technologies
+- **Regex-based Analysis**: No external dependencies
 
 ## 📋 SQL Rules Analyzed
 
@@ -44,17 +45,17 @@ A powerful .NET 8 application that analyzes SQL queries for potential issues and
 
 ### Running the Application
 
-#### 1. Web UI (Recommended)
+#### 1. Web UI (Recommended - Fully Static)
 ```bash
-# Start the API server
-cd src/SqlQueryAnalyzer.Api
-dotnet run
-
-# In a new terminal, start the web server
-cd ../../
+# Option A: Local development server
 python -m http.server 8080
+# Then open http://localhost:8080
 
-# Open http://localhost:8080 in your browser
+# Option B: Deploy to Vercel
+# Just push to GitHub and connect to Vercel - it's fully static!
+
+# Option C: Open index.html directly in browser
+# Double-click index.html or open file:// URL
 ```
 
 #### 2. Command Line Interface
@@ -68,9 +69,9 @@ dotnet run -- -f path/to/your/query.sql
 echo "SELECT * FROM users" | dotnet run
 ```
 
-#### 3. REST API
+#### 3. REST API (Local Development)
 ```bash
-# Start the API
+# Start the API server (for advanced features)
 cd src/SqlQueryAnalyzer.Api
 dotnet run
 
@@ -143,16 +144,20 @@ Health check endpoint.
 
 ## 🚀 Deployment
 
-### Vercel (Frontend Only)
+### Static Hosting (Vercel/Netlify/GitHub Pages)
 1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Deploy - the `vercel.json` configuration is already included
+2. Connect to your hosting provider
+3. Deploy - it's fully static with zero configuration needed!
+4. **Live Demo**: Works instantly without any server setup
 
 ### Local Development
-1. Clone the repository
-2. Install .NET 8.0 SDK
-3. Run the API: `cd src/SqlQueryAnalyzer.Api && dotnet run`
-4. Serve the UI: `python -m http.server 8080`
+```bash
+# Web UI only (static)
+python -m http.server 8080
+
+# Full development with API
+cd src/SqlQueryAnalyzer.Api && dotnet run
+```
 
 ## 🧪 Testing
 

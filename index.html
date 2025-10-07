@@ -461,10 +461,161 @@ SELECT TOP 100 * FROM orders WHERE 1=1;`
             document.getElementById('lineCount').textContent = `${lineCount} lines`;
         }
 
+        // SQL Analysis Engine - Client-side implementation
+        class SqlAnalyzer {
+            constructor() {
+                this.issues = [];
+            }
+
+            analyze(sql) {
+                this.issues = [];
+                const statements = this.splitStatements(sql);
+                
+                statements.forEach((statement, index) => {
+                    this.analyzeStatement(statement.trim(), index);
+                });
+
+                return {
+                    issues: this.issues,
+                    formatted: this.formatSql(sql)
+                };
+            }
+
+            splitStatements(sql) {
+                // Simple statement splitting (can be enhanced)
+                return sql.split(/;\s*(?=\w)/).filter(s => s.trim().length > 0);
+            }
+
+            analyzeStatement(statement, statementIndex) {
+                const upperStatement = statement.toUpperCase();
+
+                // SQL001: SELECT * usage
+                if (/SELECT\s+\*/.test(upperStatement)) {
+                    this.addIssue('SQL001', 1, 'Avoid using SELECT *', 
+                        'Specify explicit column names for better performance and maintainability', statementIndex);
+                }
+
+                // SQL002: UPDATE without WHERE
+                if (/^UPDATE\s+/.test(upperStatement) && !/WHERE\s+/.test(upperStatement)) {
+                    this.addIssue('SQL002', 2, 'UPDATE statement without WHERE clause', 
+                        'Add a WHERE clause to avoid updating all rows', statementIndex);
+                }
+
+                // SQL003: DELETE without WHERE
+                if (/^DELETE\s+FROM\s+/.test(upperStatement) && !/WHERE\s+/.test(upperStatement)) {
+                    this.addIssue('SQL003', 2, 'DELETE statement without WHERE clause', 
+                        'Add a WHERE clause to avoid deleting all rows', statementIndex);
+                }
+
+                // SQL004: Hardcoded values
+                if (/'[^']*'/.test(statement) || /"[^"]*"/.test(statement)) {
+                    if (!/WHERE.*=.*['"]/.test(upperStatement)) {
+                        this.addIssue('SQL004', 1, 'Hardcoded values detected', 
+                            'Consider using parameters for better security and reusability', statementIndex);
+                    }
+                }
+
+                // SQL005: Missing table aliases for joins
+                if (/JOIN\s+/.test(upperStatement) && !/AS\s+\w+|JOIN\s+\w+\s+\w+/.test(upperStatement)) {
+                    this.addIssue('SQL005', 0, 'Consider using table aliases', 
+                        'Table aliases improve readability in JOIN operations', statementIndex);
+                }
+
+                // SQL006: CROSS JOIN detected
+                if (/CROSS\s+JOIN/.test(upperStatement)) {
+                    this.addIssue('SQL006', 1, 'CROSS JOIN detected', 
+                        'CROSS JOINs can produce large result sets, ensure this is intentional', statementIndex);
+                }
+
+                // SQL007: Implicit comma joins
+                if (/FROM\s+\w+\s*,\s*\w+/.test(upperStatement)) {
+                    this.addIssue('SQL007', 1, 'Implicit comma join detected', 
+                        'Use explicit JOIN syntax for better readability', statementIndex);
+                }
+
+                // SQL008: DROP statements
+                if (/^DROP\s+(TABLE|DATABASE|INDEX)/.test(upperStatement)) {
+                    this.addIssue('SQL008', 2, 'Destructive DROP statement', 
+                        'Ensure this operation is intentional and properly backed up', statementIndex);
+                }
+
+                // SQL009: TRUNCATE statements
+                if (/^TRUNCATE\s+TABLE/.test(upperStatement)) {
+                    this.addIssue('SQL009', 2, 'TRUNCATE statement detected', 
+                        'TRUNCATE removes all data and cannot be rolled back', statementIndex);
+                }
+
+                // SQL010: ORDER BY without LIMIT
+                if (/ORDER\s+BY/.test(upperStatement) && !/LIMIT\s+\d+|TOP\s+\d+/.test(upperStatement)) {
+                    this.addIssue('SQL010', 0, 'ORDER BY without LIMIT', 
+                        'Consider adding LIMIT to prevent sorting large result sets', statementIndex);
+                }
+
+                // SQL011: COUNT(*) vs COUNT(column)
+                if (/COUNT\s*\(\s*\*\s*\)/.test(upperStatement)) {
+                    this.addIssue('SQL011', 0, 'Using COUNT(*)', 
+                        'Consider COUNT(column) if you want to exclude NULL values', statementIndex);
+                }
+
+                // SQL012: LIKE without wildcards
+                if (/LIKE\s+['"][^%_]*['"]/.test(statement)) {
+                    this.addIssue('SQL012', 1, 'LIKE without wildcards', 
+                        'Use = operator instead of LIKE for exact matches', statementIndex);
+                }
+
+                // SQL013: OR in WHERE clause
+                if (/WHERE.*OR/.test(upperStatement)) {
+                    this.addIssue('SQL013', 0, 'OR operator in WHERE clause', 
+                        'OR conditions may prevent index usage, consider alternative approaches', statementIndex);
+                }
+
+                // SQL014: Functions in WHERE clause
+                if (/WHERE.*[A-Z_]+\s*\(.*\)\s*[=<>!]/.test(upperStatement)) {
+                    this.addIssue('SQL014', 1, 'Function in WHERE clause', 
+                        'Functions on columns prevent index usage', statementIndex);
+                }
+
+                // SQL015: DISTINCT usage
+                if (/SELECT\s+DISTINCT/.test(upperStatement)) {
+                    this.addIssue('SQL015', 0, 'DISTINCT usage detected', 
+                        'Ensure DISTINCT is necessary as it can impact performance', statementIndex);
+                }
+            }
+
+            addIssue(ruleId, severity, message, suggestion, statementIndex) {
+                this.issues.push({
+                    ruleId,
+                    severity,
+                    message,
+                    suggestion,
+                    statementIndex
+                });
+            }
+
+            formatSql(sql) {
+                // Basic SQL formatting
+                let formatted = sql
+                    // Keywords to uppercase
+                    .replace(/\b(select|from|where|join|inner|left|right|full|outer|on|group|by|order|having|union|all|distinct|as|and|or|not|in|like|between|is|null|case|when|then|else|end|insert|into|values|update|set|delete|create|table|alter|drop|index|primary|key|foreign|references|constraint|unique|check|default|auto_increment|varchar|int|integer|bigint|decimal|float|double|date|datetime|timestamp|text|blob)\b/gi, 
+                     (match) => match.toUpperCase())
+                    // Add line breaks after major clauses
+                    .replace(/\s+(FROM|WHERE|JOIN|INNER JOIN|LEFT JOIN|RIGHT JOIN|FULL OUTER JOIN|GROUP BY|ORDER BY|HAVING|UNION|UNION ALL)\s+/gi, '\n$1 ')
+                    // Add line breaks after SELECT
+                    .replace(/SELECT\s+/gi, 'SELECT\n    ')
+                    // Format column lists
+                    .replace(/,\s*(?=\w)/g, ',\n    ')
+                    // Clean up extra whitespace
+                    .replace(/\s+/g, ' ')
+                    .replace(/\n\s*\n/g, '\n')
+                    .trim();
+
+                return formatted;
+            }
+        }
+
         // Main analysis function
-        async function analyzeSQL() {
+        function analyzeSQL() {
             const sqlInput = document.getElementById('sqlInput').value.trim();
-            const apiUrl = 'http://localhost:5000/analyze'; // Default API endpoint
             const convertBtn = document.getElementById('convertBtn');
             const resultsContainer = document.getElementById('resultsContainer');
             const analysisTime = document.getElementById('analysisTime');
@@ -482,19 +633,10 @@ SELECT TOP 100 * FROM orders WHERE 1=1;`
             const startTime = Date.now();
 
             try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ sql: sqlInput })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const result = await response.json();
+                // Use client-side analyzer
+                const analyzer = new SqlAnalyzer();
+                const result = analyzer.analyze(sqlInput);
+                
                 const endTime = Date.now();
                 const duration = endTime - startTime;
                 
