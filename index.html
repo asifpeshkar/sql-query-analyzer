@@ -580,48 +580,44 @@ TRUNCATE TABLE old_logs;`
             }
 
             checkSyntaxErrors(statement, statementIndex) {
-                // Define common SQL keyword typos and their corrections
-                const keywordTypos = {
-                    'SELOCT': 'SELECT',
-                    'SELCT': 'SELECT', 
-                    'SELECR': 'SELECT',
-                    'SELEDT': 'SELECT',
-                    'SLECT': 'SELECT',
-                    'FRMO': 'FROM',
-                    'FORM': 'FROM',
-                    'FRON': 'FROM',
-                    'WHRE': 'WHERE',
-                    'WHER': 'WHERE',
-                    'WEHRE': 'WHERE',
-                    'ORDR': 'ORDER',
-                    'ODER': 'ORDER',
-                    'GROPU': 'GROUP',
-                    'GRUP': 'GROUP',
-                    'JOINN': 'JOIN',
-                    'JION': 'JOIN',
-                    'INNR': 'INNER',
-                    'LEFTT': 'LEFT',
-                    'RIGHTT': 'RIGHT',
-                    'UPDAT': 'UPDATE',
-                    'UDPATE': 'UPDATE',
-                    'DELET': 'DELETE',
-                    'DELEET': 'DELETE',
-                    'CREAT': 'CREATE',
-                    'CRAETE': 'CREATE',
-                    'INSER': 'INSERT',
-                    'INSRET': 'INSERT',
-                    'VALU': 'VALUES',
-                    'VLAUES': 'VALUES'
-                };
+                // Define all valid SQL keywords
+                const validKeywords = [
+                    'SELECT', 'FROM', 'WHERE', 'ORDER', 'BY', 'GROUP', 'HAVING', 'JOIN', 'INNER', 'LEFT', 'RIGHT', 'FULL', 'OUTER',
+                    'ON', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'TABLE', 'INDEX',
+                    'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'CONSTRAINT', 'UNIQUE', 'CHECK', 'DEFAULT', 'NOT', 'NULL',
+                    'AND', 'OR', 'IN', 'LIKE', 'BETWEEN', 'IS', 'AS', 'DISTINCT', 'ALL', 'ANY', 'SOME', 'EXISTS',
+                    'UNION', 'INTERSECT', 'EXCEPT', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'IF', 'WHILE', 'FOR',
+                    'DECLARE', 'BEGIN', 'COMMIT', 'ROLLBACK', 'TRANSACTION', 'PROCEDURE', 'FUNCTION', 'TRIGGER',
+                    'VIEW', 'SCHEMA', 'DATABASE', 'USE', 'GRANT', 'REVOKE', 'EXEC', 'EXECUTE', 'RETURN',
+                    'VARCHAR', 'CHAR', 'INT', 'INTEGER', 'BIGINT', 'SMALLINT', 'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL',
+                    'DATE', 'TIME', 'DATETIME', 'TIMESTAMP', 'YEAR', 'TEXT', 'BLOB', 'BINARY', 'VARBINARY',
+                    'BOOLEAN', 'BOOL', 'TRUE', 'FALSE', 'AUTO_INCREMENT', 'IDENTITY', 'SERIAL'
+                ];
 
-                // Check for keyword typos (using word boundaries to avoid false positives)
                 const upperStatement = statement.toUpperCase();
-                for (const [typo, correct] of Object.entries(keywordTypos)) {
-                    // Use word boundary regex to match whole words only
-                    const typoRegex = new RegExp(`\\b${typo}\\b`, 'g');
-                    if (typoRegex.test(upperStatement)) {
-                        this.addIssue('SQL000', 2, `SQL syntax error: '${typo}' should be '${correct}'`, 
-                            `Replace '${typo}' with '${correct}'`, statementIndex);
+                
+                // Extract potential keywords from the statement (words that are likely meant to be SQL keywords)
+                // Look for words in typical SQL keyword positions
+                const words = upperStatement.match(/\b[A-Z][A-Z_]*\b/g) || [];
+                
+                for (const word of words) {
+                    // Skip if it's already a valid keyword
+                    if (validKeywords.includes(word)) continue;
+                    
+                    // Skip if it looks like a table/column name (lowercase originally or mixed case)
+                    const originalWord = this.findOriginalWord(statement, word);
+                    if (originalWord && /^[a-z]/.test(originalWord)) continue;
+                    
+                    // Skip common non-keyword patterns
+                    if (/^\d+$/.test(word)) continue; // Numbers
+                    if (word.length < 3) continue; // Very short words
+                    if (/^[A-Z]+\d+$/.test(word)) continue; // Like TABLE1, COL2, etc.
+                    
+                    // Check if this word is similar to any valid SQL keyword
+                    const closeMatch = this.findClosestKeyword(word, validKeywords);
+                    if (closeMatch) {
+                        this.addIssue('SQL000', 2, `SQL syntax error: '${originalWord || word}' appears to be a misspelled keyword, did you mean '${closeMatch}'?`, 
+                            `Replace '${originalWord || word}' with '${closeMatch}'`, statementIndex);
                     }
                 }
 
@@ -650,6 +646,59 @@ TRUNCATE TABLE old_logs;`
                         }
                     }
                 }
+            }
+
+            // Find the original word in the statement (preserving case)
+            findOriginalWord(statement, upperWord) {
+                const regex = new RegExp(`\\b${upperWord}\\b`, 'i');
+                const match = statement.match(regex);
+                return match ? match[0] : null;
+            }
+
+            // Find the closest valid SQL keyword using edit distance
+            findClosestKeyword(word, validKeywords) {
+                let bestMatch = null;
+                let bestDistance = Infinity;
+                const maxDistance = Math.min(3, Math.floor(word.length / 2)); // Allow up to 3 errors or half the word length
+                
+                for (const keyword of validKeywords) {
+                    const distance = this.levenshteinDistance(word, keyword);
+                    if (distance <= maxDistance && distance < bestDistance) {
+                        bestDistance = distance;
+                        bestMatch = keyword;
+                    }
+                }
+                
+                return bestMatch;
+            }
+
+            // Calculate Levenshtein distance (edit distance) between two strings
+            levenshteinDistance(str1, str2) {
+                const matrix = [];
+                
+                for (let i = 0; i <= str2.length; i++) {
+                    matrix[i] = [i];
+                }
+                
+                for (let j = 0; j <= str1.length; j++) {
+                    matrix[0][j] = j;
+                }
+                
+                for (let i = 1; i <= str2.length; i++) {
+                    for (let j = 1; j <= str1.length; j++) {
+                        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                            matrix[i][j] = matrix[i - 1][j - 1];
+                        } else {
+                            matrix[i][j] = Math.min(
+                                matrix[i - 1][j - 1] + 1, // substitution
+                                matrix[i][j - 1] + 1,     // insertion
+                                matrix[i - 1][j] + 1      // deletion
+                            );
+                        }
+                    }
+                }
+                
+                return matrix[str2.length][str1.length];
             }
 
             // Helper method to check if two strings are close matches (simple similarity check)
