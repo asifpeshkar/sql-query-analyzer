@@ -507,13 +507,8 @@ SELECT TOP 100 * FROM orders WHERE 1=1;`
                         'Add a WHERE clause to avoid deleting all rows', statementIndex);
                 }
 
-                // SQL004: Hardcoded values
-                if (/'[^']*'/.test(statement) || /"[^"]*"/.test(statement)) {
-                    if (!/WHERE.*=.*['"]/.test(upperStatement)) {
-                        this.addIssue('SQL004', 1, 'Hardcoded values detected', 
-                            'Consider using parameters for better security and reusability', statementIndex);
-                    }
-                }
+                // SQL004: Hardcoded values - DISABLED
+                // Disabled as hardcoded values are often acceptable in many contexts
 
                 // SQL005: Missing table aliases for joins
                 if (/JOIN\s+/.test(upperStatement) && !/AS\s+\w+|JOIN\s+\w+\s+\w+/.test(upperStatement)) {
@@ -545,11 +540,8 @@ SELECT TOP 100 * FROM orders WHERE 1=1;`
                         'TRUNCATE removes all data and cannot be rolled back', statementIndex);
                 }
 
-                // SQL010: ORDER BY without LIMIT
-                if (/ORDER\s+BY/.test(upperStatement) && !/LIMIT\s+\d+|TOP\s+\d+/.test(upperStatement)) {
-                    this.addIssue('SQL010', 0, 'ORDER BY without LIMIT', 
-                        'Consider adding LIMIT to prevent sorting large result sets', statementIndex);
-                }
+                // SQL010: ORDER BY without LIMIT - DISABLED
+                // Disabled as ORDER BY without LIMIT is often perfectly valid
 
                 // SQL011: COUNT(*) vs COUNT(column)
                 if (/COUNT\s*\(\s*\*\s*\)/.test(upperStatement)) {
