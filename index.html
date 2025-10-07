@@ -578,26 +578,62 @@ TRUNCATE TABLE old_logs;`
             }
 
             formatSql(sql) {
-                // Basic SQL formatting
-                let formatted = sql
-                    // Keywords to uppercase
-                    .replace(/\b(select|from|where|join|inner|left|right|full|outer|on|group|by|order|having|union|all|distinct|as|and|or|not|in|like|between|is|null|case|when|then|else|end|insert|into|values|update|set|delete|create|table|alter|drop|index|primary|key|foreign|references|constraint|unique|check|default|auto_increment|varchar|int|integer|bigint|decimal|float|double|date|datetime|timestamp|text|blob)\b/gi, 
-                     (match) => match.toUpperCase())
-                    // Add line breaks after major clauses
-                    .replace(/\s+(FROM|WHERE|JOIN|INNER JOIN|LEFT JOIN|RIGHT JOIN|FULL OUTER JOIN|GROUP BY|ORDER BY|HAVING|UNION|UNION ALL)\s+/gi, '\n$1 ')
-                    // Add line breaks after SELECT (but be more careful)
-                    .replace(/SELECT\s+(?![\s\n])/gi, 'SELECT\n    ')
-                    // Format column lists only in SELECT clauses
-                    .replace(/(SELECT[\s\n]+[^FROM]*),\s*(?=\w)/gi, (match, p1) => {
-                        return p1 + ',\n    ';
-                    })
-                    // Clean up extra whitespace
-                    .replace(/\s+/g, ' ')
-                    .replace(/\n\s*\n/g, '\n')
-                    .replace(/\n\s+\n/g, '\n')
+                // Comprehensive SQL formatting
+                let formatted = sql.trim();
+                
+                // Step 1: Keywords to uppercase
+                formatted = formatted.replace(/\b(select|from|where|join|inner|left|right|full|outer|on|group|by|order|having|union|all|distinct|as|and|or|not|in|like|between|is|null|case|when|then|else|end|insert|into|values|update|set|delete|create|table|alter|drop|index|primary|key|foreign|references|constraint|unique|check|default|auto_increment|varchar|int|integer|bigint|decimal|float|double|date|datetime|timestamp|text|blob)\b/gi, 
+                    (match) => match.toUpperCase());
+                
+                // Step 2: Add line breaks before major clauses
+                formatted = formatted.replace(/\s+(FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|UNION\s+ALL|UNION|JOIN|INNER\s+JOIN|LEFT\s+JOIN|RIGHT\s+JOIN|FULL\s+OUTER\s+JOIN)\s+/gi, '\n$1 ');
+                
+                // Step 3: Format SELECT clause with proper indentation
+                formatted = formatted.replace(/SELECT\s+/gi, 'SELECT ');
+                
+                // Step 4: Add indentation for column lists in SELECT
+                if (formatted.toUpperCase().includes('SELECT')) {
+                    const selectMatch = formatted.match(/(SELECT\s+)(.*?)(\s+FROM|\s*$)/si);
+                    if (selectMatch) {
+                        const selectKeyword = selectMatch[1];
+                        const columns = selectMatch[2];
+                        const rest = selectMatch[3] || '';
+                        
+                        // Format columns with proper indentation
+                        const formattedColumns = columns
+                            .split(',')
+                            .map((col, index) => {
+                                const trimmed = col.trim();
+                                return index === 0 ? trimmed : '    ' + trimmed;
+                            })
+                            .join(',\n');
+                        
+                        formatted = selectKeyword + formattedColumns + rest;
+                    }
+                }
+                
+                // Step 5: Clean up spacing and indentation
+                formatted = formatted
+                    .replace(/\s+/g, ' ')  // Replace multiple spaces with single space
+                    .replace(/\s*\n\s*/g, '\n')  // Clean up line breaks
+                    .replace(/,\s*\n/g, ',\n')  // Ensure proper comma formatting
                     .trim();
-
-                return formatted;
+                
+                // Step 6: Add proper indentation after line breaks
+                const lines = formatted.split('\n');
+                const indentedLines = lines.map((line, index) => {
+                    if (index === 0) return line; // First line (SELECT) no indent
+                    
+                    const trimmedLine = line.trim();
+                    if (/^(FROM|WHERE|GROUP\s+BY|ORDER\s+BY|HAVING|UNION|JOIN|INNER\s+JOIN|LEFT\s+JOIN|RIGHT\s+JOIN|FULL\s+OUTER\s+JOIN)/i.test(trimmedLine)) {
+                        return trimmedLine; // Major clauses at start of line
+                    } else if (trimmedLine.startsWith(',') || /^\w+/.test(trimmedLine)) {
+                        return '    ' + trimmedLine; // Indent column names and other content
+                    }
+                    return trimmedLine;
+                });
+                
+                return indentedLines.join('\n');
             }
         }
 
